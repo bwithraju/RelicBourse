@@ -168,4 +168,124 @@ describe('Auth & Health API Tests (Task B1)', () => {
       expect(res.body.user.email).toBe('me@relicbourse.com');
     });
   });
+
+  describe('POST /auth/forgot-password & /auth/reset-password', () => {
+    beforeEach(async () => {
+      await request(app)
+        .post('/auth/register')
+        .send({
+          email: 'forgotme@relicbourse.com',
+          password: 'oldPassword123',
+        });
+    });
+
+    it('anti-enumeration: returns identical 200 message for both existing and non-existing email', async () => {
+      const existingRes = await request(app)
+        .post('/auth/forgot-password')
+        .send({ email: 'forgotme@relicbourse.com' });
+
+      const unknownRes = await request(app)
+        .post('/auth/forgot-password')
+        .send({ email: 'unknown_trader_99@relicbourse.com' });
+
+      expect(existingRes.status).toBe(200);
+      expect(unknownRes.status).toBe(200);
+      expect(existingRes.body.success).toBe(true);
+      expect(unknownRes.body.success).toBe(true);
+      expect(existingRes.body.message).toBe(unknownRes.body.message);
+      expect(existingRes.body.message).toMatch(/if this email is registered/i);
+
+      // In dev/test environment, returns resetToken for existing user
+      expect(existingRes.body.resetToken).toBeDefined();
+      expect(typeof existingRes.body.resetToken).toBe('string');
+      // For unknown user, resetToken is undefined
+      expect(unknownRes.body.resetToken).toBeUndefined();
+    });
+
+    it('enforces password policy on reset (min 8 chars, letters and numbers)', async () => {
+      const forgotRes = await request(app)
+        .post('/auth/forgot-password')
+        .send({ email: 'forgotme@relicbourse.com' });
+
+      const token = forgotRes.body.resetToken;
+
+      // Too short (< 8 chars)
+      const shortRes = await request(app)
+        .post('/auth/reset-password')
+        .send({
+          token,
+          password: 'pass1',
+        });
+      expect(shortRes.status).toBe(400);
+
+      // Only letters
+      const lettersOnlyRes = await request(app)
+        .post('/auth/reset-password')
+        .send({
+          token,
+          password: 'onlylettershere',
+        });
+      expect(lettersOnlyRes.status).toBe(400);
+
+      // Only numbers
+      const numbersOnlyRes = await request(app)
+        .post('/auth/reset-password')
+        .send({
+          token,
+          password: '1234567890',
+        });
+      expect(numbersOnlyRes.status).toBe(400);
+    });
+
+    it('successfully resets password, invalidates old password, and rejects token reuse', async () => {
+      // 1. Request forgot password token
+      const forgotRes = await request(app)
+        .post('/auth/forgot-password')
+        .send({ email: 'forgotme@relicbourse.com' });
+
+      const token = forgotRes.body.resetToken;
+      expect(token).toBeDefined();
+
+      // 2. Reset password
+      const resetRes = await request(app)
+        .post('/auth/reset-password')
+        .send({
+          token,
+          password: 'newStrongPassword2026',
+        });
+
+      expect(resetRes.status).toBe(200);
+      expect(resetRes.body.success).toBe(true);
+      expect(resetRes.body.message).toMatch(/Password reset successfully/i);
+
+      // 3. Old password should fail
+      const oldLoginRes = await request(app)
+        .post('/auth/login')
+        .send({
+          email: 'forgotme@relicbourse.com',
+          password: 'oldPassword123',
+        });
+      expect(oldLoginRes.status).toBe(401);
+
+      // 4. New password should succeed
+      const newLoginRes = await request(app)
+        .post('/auth/login')
+        .send({
+          email: 'forgotme@relicbourse.com',
+          password: 'newStrongPassword2026',
+        });
+      expect(newLoginRes.status).toBe(200);
+      expect(newLoginRes.body.token).toBeDefined();
+
+      // 5. Reusing the same reset token must be rejected
+      const reuseRes = await request(app)
+        .post('/auth/reset-password')
+        .send({
+          token,
+          password: 'anotherPassword999',
+        });
+      expect(reuseRes.status).toBe(400);
+      expect(reuseRes.body.error).toMatch(/invalid or has expired/i);
+    });
+  });
 });

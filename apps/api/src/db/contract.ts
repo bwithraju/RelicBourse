@@ -20,10 +20,23 @@ export interface DbClient {
   query?: (...args: any[]) => Promise<any>;
 }
 
+export interface PasswordResetRecord {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: string;
+  usedAt: string | null;
+  createdAt: string;
+}
+
 export interface UsersRepository {
   createUser(client: DbClient, params: { email: string; passwordHash: string }): Promise<User>;
   findByEmail(client: DbClient, email: string): Promise<User | null>;
   findById(client: DbClient, id: string): Promise<User | null>;
+  updatePassword(client: DbClient, userId: string, newPasswordHash: string): Promise<void>;
+  createPasswordResetToken(client: DbClient, userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
+  findValidResetToken(client: DbClient, tokenHash: string): Promise<PasswordResetRecord | null>;
+  markResetTokenUsed(client: DbClient, tokenId: string): Promise<void>;
 }
 
 export interface AccountsRepository {

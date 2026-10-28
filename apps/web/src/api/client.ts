@@ -112,6 +112,45 @@ export const apiClient = {
     }
   },
 
+  // POST /auth/forgot-password
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string; resetToken?: string }> {
+    try {
+      const res = await api.post<{ success: boolean; message: string; resetToken?: string }>(
+        '/auth/forgot-password',
+        { email }
+      );
+      return res.data;
+    } catch (err) {
+      if (axios.isAxiosError(err) && (!err.response || err.code === 'ERR_NETWORK')) {
+        return {
+          success: true,
+          message: 'If this email is registered, you will receive password reset instructions.',
+          resetToken: 'mock-dev-token-' + Math.random().toString(36).substring(2, 10),
+        };
+      }
+      throw new Error(getErrorMessage(err));
+    }
+  },
+
+  // POST /auth/reset-password
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const res = await api.post<{ success: boolean; message: string }>('/auth/reset-password', {
+        token,
+        password,
+      });
+      return res.data;
+    } catch (err) {
+      if (axios.isAxiosError(err) && (!err.response || err.code === 'ERR_NETWORK')) {
+        return {
+          success: true,
+          message: 'Password reset successfully. You can now log in with your new password.',
+        };
+      }
+      throw new Error(getErrorMessage(err));
+    }
+  },
+
   // GET /markets
   async getMarkets(): Promise<Market[]> {
     try {

@@ -9,6 +9,7 @@ import {
   LedgerRepository,
   EscrowRepository,
   AuctionsRepository,
+  PasswordResetRecord,
 } from './contract.js';
 import {
   User,
@@ -92,6 +93,7 @@ export class MockDbStore {
   }> = [];
   public escrowHolds = new Map<string, EscrowHold>(); // key: tradeId
   public auctions = new Map<string, Auction>();
+  public passwordResetTokens = new Map<string, PasswordResetRecord>();
   public idempotency = new Map<
     string,
     { userId: string; requestHash: string; storedResponse: any; createdAt: string }
@@ -106,6 +108,7 @@ export class MockDbStore {
     this.ledgerEntries = [];
     this.escrowHolds.clear();
     this.auctions.clear();
+    this.passwordResetTokens.clear();
     this.idempotency.clear();
   }
 }
@@ -183,6 +186,54 @@ export const usersRepo: UsersRepository = {
       return await pgUsersRepo.findById(client, id);
     }
     return mockStore.users.get(id) || null;
+  },
+
+  async updatePassword(client: DbClient, userId: string, newPasswordHash: string): Promise<void> {
+    if (shouldUsePg(client)) {
+      return await pgUsersRepo.updatePassword(client, userId, newPasswordHash);
+    }
+    const user = mockStore.users.get(userId);
+    if (user) {
+      user.passwordHash = newPasswordHash;
+    }
+  },
+
+  async createPasswordResetToken(client: DbClient, userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    if (shouldUsePg(client)) {
+      return await pgUsersRepo.createPasswordResetToken(client, userId, tokenHash, expiresAt);
+    }
+    const record: PasswordResetRecord = {
+      id: crypto.randomUUID(),
+      userId,
+      tokenHash,
+      expiresAt: expiresAt.toISOString(),
+      usedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    mockStore.passwordResetTokens.set(tokenHash, record);
+  },
+
+  async findValidResetToken(client: DbClient, tokenHash: string): Promise<PasswordResetRecord | null> {
+    if (shouldUsePg(client)) {
+      return await pgUsersRepo.findValidResetToken(client, tokenHash);
+    }
+    const record = mockStore.passwordResetTokens.get(tokenHash);
+    if (!record) return null;
+    if (record.usedAt) return null;
+    if (new Date(record.expiresAt).getTime() < Date.now()) return null;
+    return record;
+  },
+
+  async markResetTokenUsed(client: DbClient, tokenId: string): Promise<void> {
+    if (shouldUsePg(client)) {
+      return await pgUsersRepo.markResetTokenUsed(client, tokenId);
+    }
+    for (const record of mockStore.passwordResetTokens.values()) {
+      if (record.id === tokenId) {
+        record.usedAt = new Date().toISOString();
+        break;
+      }
+    }
   },
 };
 

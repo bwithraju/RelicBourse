@@ -1,8 +1,14 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { AuthService } from './service.js';
 import { validate } from '../middleware/validate.js';
-import { registerSchema, loginSchema } from '../schemas/index.js';
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from '../schemas/index.js';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
+import { authRateLimit } from '../middleware/rate-limit.js';
 import { usersRepo, withTransaction } from '../db/index.js';
 import { AppError } from '../middleware/error.js';
 
@@ -10,6 +16,7 @@ export const authRouter = Router();
 
 authRouter.post(
   '/register',
+  authRateLimit,
   validate(registerSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -24,11 +31,42 @@ authRouter.post(
 
 authRouter.post(
   '/login',
+  authRateLimit,
   validate(loginSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { email, password } = req.body;
       const result = await AuthService.login(email, password);
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+authRouter.post(
+  '/forgot-password',
+  authRateLimit,
+  validate(forgotPasswordSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email } = req.body;
+      const result = await AuthService.forgotPassword(email);
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+authRouter.post(
+  '/reset-password',
+  authRateLimit,
+  validate(resetPasswordSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { token, password } = req.body;
+      const result = await AuthService.resetPassword(token, password);
       res.status(200).json(result);
     } catch (err) {
       next(err);

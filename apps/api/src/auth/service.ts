@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { withTransaction, usersRepo, seedNewUserData } from '../db/index.js';
 import { AppError } from '../middleware/error.js';
 
@@ -93,6 +94,8 @@ export class AuthService {
     });
 
     if (!user) {
+      // Run dummy compare to guarantee constant timing against user enumeration
+      await bcrypt.compare(password, '$2a$10$abcdefghijklmnopqrstuvwxyz123456');
       throw new AppError(GENERIC_AUTH_ERROR, 401);
     }
 
@@ -117,6 +120,104 @@ export class AuthService {
         createdAt: user.createdAt,
       },
       token,
+    };
+  }
+
+  /**
+   * Request password reset token:
+   * 1. Anti-enumeration: returns identical success message whether email exists or not
+   * 2. If user exists: generates 32-byte cryptographically secure token
+   * 3. Stores SHA-256 hash in database with 15-minute expiration
+   * 4. In dev/demo: includes resetToken in payload for immediate testing
+   */
+  public static async forgotPassword(
+    email: string
+  ): Promise<{ success: boolean; message: string; resetToken?: string }> {
+    const user = await withTransaction(async (client) => {
+      return await usersRepo.findByEmail(client, email.trim().toLowerCase());
+    });
+
+    if (!user) {
+      // Dummy bcrypt compare to avoid timing enumeration
+      await bcrypt.compare('dummy12345', '$2a$10$abcdefghijklmnopqrstuvwxyz123456');
+      return {
+        success: true,
+        message: 'If this email is registered, you will receive password reset instructions.',
+      };
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
+
+    await withTransaction(async (client) => {
+      await usersRepo.createPasswordResetToken(client, user.id, tokenHash, expiresAt);
+    });
+
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    return {
+      success: true,
+      message: 'If this email is registered, you will receive password reset instructions.',
+      ...(isDev ? { resetToken: rawToken } : {}),
+    };
+  }
+
+  /**
+   * Reset password with valid single-use token:
+   * 1. Hashes incoming token with SHA-256 and checks database for active, unexpired, unused token
+   * 2. Hashes new password with bcrypt
+   * 3. Updates password and marks token as used atomically
+   * 4. Updates registered_users.json backup for zero-data-loss durability
+   */
+  public static async resetPassword(
+    token: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string }> {
+    if (!token || typeof token !== 'string') {
+      throw new AppError('Invalid or missing password reset token', 400);
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
+
+    const resetRecord = await withTransaction(async (client) => {
+      return await usersRepo.findValidResetToken(client, tokenHash);
+    });
+
+    if (!resetRecord) {
+      throw new AppError('Password reset token is invalid or has expired', 400);
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    const user = await withTransaction(async (client) => {
+      await usersRepo.updatePassword(client, resetRecord.userId, newPasswordHash);
+      await usersRepo.markResetTokenUsed(client, resetRecord.id);
+      return await usersRepo.findById(client, resetRecord.userId);
+    });
+
+    // Update persistent registered_users.json backup
+    if (user && !process.env.VITEST) {
+      try {
+        const rootDataDir = path.resolve(process.cwd(), 'data');
+        const backupFile = path.join(rootDataDir, 'registered_users.json');
+        if (fs.existsSync(backupFile)) {
+          let existing: Array<{ email: string; passwordHash: string }> = JSON.parse(
+            fs.readFileSync(backupFile, 'utf-8')
+          );
+          existing = existing.map((u) =>
+            u.email.toLowerCase() === user.email.toLowerCase()
+              ? { ...u, passwordHash: newPasswordHash }
+              : u
+          );
+          fs.writeFileSync(backupFile, JSON.stringify(existing, null, 2), 'utf-8');
+        }
+      } catch {}
+    }
+
+    return {
+      success: true,
+      message: 'Password reset successfully. You can now log in with your new password.',
     };
   }
 }

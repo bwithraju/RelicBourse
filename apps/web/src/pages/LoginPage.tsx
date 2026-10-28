@@ -76,7 +76,12 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Password</label>
+            <div className="form-label-row">
+              <label className="form-label">Password</label>
+              <Link to="/forgot-password" className="auth-forgot-link">
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               className="text-input"

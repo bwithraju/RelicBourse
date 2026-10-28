@@ -1,7 +1,7 @@
 // Register Page for RelicBourse
 // Seeds new user with ₹1,00,000 minor simulated balance upon account creation
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/client';
@@ -21,6 +21,50 @@ export const RegisterPage: React.FC = () => {
       navigate('/', { replace: true });
     }
   }, [user, token, navigate]);
+
+  // Password strength calculation
+  const strength = useMemo(() => {
+    const hasMinLen = password.length >= 8;
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[^a-zA-Z0-9]/.test(password);
+    const hasUpper = /[A-Z]/.test(password) && /[a-z]/.test(password);
+
+    let score = 0;
+    if (hasMinLen) score++;
+    if (hasLetter) score++;
+    if (hasNumber) score++;
+    if (hasSymbol || hasUpper) score++;
+
+    let label = 'Very Weak';
+    let color = '#ef4444';
+    let width = '20%';
+
+    if (score === 2) {
+      label = 'Moderate';
+      color = '#f59e0b';
+      width = '50%';
+    } else if (score === 3) {
+      label = 'Good';
+      color = '#38bdf8';
+      width = '75%';
+    } else if (score >= 4) {
+      label = 'Strong';
+      color = '#10b981';
+      width = '100%';
+    }
+
+    return {
+      score,
+      label,
+      color,
+      width,
+      hasMinLen,
+      hasLetter,
+      hasNumber,
+      isValid: password.length >= 6, // Backward-compatible minimum while encouraging 8+
+    };
+  }, [password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,11 +130,41 @@ export const RegisterPage: React.FC = () => {
             <input
               type="password"
               className="text-input"
-              placeholder="Minimum 6 characters"
+              placeholder="Minimum 6 characters (8+ recommended)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            {password.length > 0 && (
+              <div className="password-strength-widget">
+                <div className="strength-header">
+                  <span className="strength-label">Strength:</span>
+                  <span className="strength-value" style={{ color: strength.color }}>
+                    {strength.label}
+                  </span>
+                </div>
+                <div className="strength-bar-bg">
+                  <div
+                    className="strength-bar-fill"
+                    style={{
+                      width: strength.width,
+                      backgroundColor: strength.color,
+                    }}
+                  />
+                </div>
+                <div className="strength-rules">
+                  <span className={strength.hasMinLen ? 'rule-met' : 'rule-unmet'}>
+                    {strength.hasMinLen ? '✓' : '•'} 8+ characters
+                  </span>
+                  <span className={strength.hasLetter ? 'rule-met' : 'rule-unmet'}>
+                    {strength.hasLetter ? '✓' : '•'} Letters
+                  </span>
+                  <span className={strength.hasNumber ? 'rule-met' : 'rule-unmet'}>
+                    {strength.hasNumber ? '✓' : '•'} Numbers
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="form-group">
