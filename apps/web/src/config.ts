@@ -1,8 +1,10 @@
 // Configuration for RelicBourse Web Client
 // Assumed Backend Port: 4000 (per specification default)
 
-export const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:4000';
-export const WS_URL = (import.meta.env.VITE_WS_URL as string) || 'ws://localhost:4000/ws';
+const defaultHost = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost';
+
+export const API_BASE = (import.meta.env.VITE_API_URL as string) || `http://${defaultHost}:4000`;
+export const WS_URL = (import.meta.env.VITE_WS_URL as string) || `ws://${defaultHost}:4000/ws`;
 
 export const CONFIG = {
   API_BASE,
