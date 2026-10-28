@@ -14,7 +14,6 @@ interface AuthContextType {
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshPortfolio: () => Promise<void>;
-  switchDemoUser: (persona: 'buyer' | 'seller') => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,15 +22,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_STORAGE_KEY));
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem(USER_STORAGE_KEY);
-    if (saved) {
+    const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (saved && savedToken) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Clean out any legacy demo personas from previous versions
+        if (
+          parsed.id === 'usr-demo-me' ||
+          parsed.id === 'usr-buyer-01' ||
+          parsed.id === 'usr-seller-02' ||
+          parsed.email?.includes('darkhold.exchange')
+        ) {
+          localStorage.removeItem(USER_STORAGE_KEY);
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          return null;
+        }
+        return parsed;
       } catch {
         return null;
       }
     }
-    // Default demo user so testing works immediately
-    return { id: 'usr-demo-me', email: 'trader1@darkhold.exchange' };
+    // No prelogged-in account
+    return null;
   });
 
   const [portfolio, setPortfolio] = useState<PortfolioView | null>(null);
@@ -46,10 +58,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // Fetch portfolio whenever token or user is set
+  // Fetch portfolio whenever token and user are set
   useEffect(() => {
-    if (token || user) {
+    if (token && user) {
       refreshPortfolio();
+    } else {
+      setPortfolio(null);
     }
   }, [token, user, refreshPortfolio]);
 
@@ -89,20 +103,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem(USER_STORAGE_KEY);
   };
 
-  // Switch demo account for multi-window / two-party trading test flow
-  const switchDemoUser = (persona: 'buyer' | 'seller') => {
-    if (persona === 'buyer') {
-      const newUser = { id: 'usr-buyer-01', email: 'vip.buyer@darkhold.exchange' };
-      setUser(newUser);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
-    } else {
-      const newUser = { id: 'usr-seller-02', email: 'scalp.shield@darkhold.exchange' };
-      setUser(newUser);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
-    }
-    refreshPortfolio();
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -114,7 +114,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         register,
         logout,
         refreshPortfolio,
-        switchDemoUser,
       }}
     >
       {children}

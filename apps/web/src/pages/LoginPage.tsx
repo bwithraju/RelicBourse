@@ -1,11 +1,11 @@
 // Login Page for RelicBourse
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/client';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, user, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -13,6 +13,13 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user && token) {
+      const destination = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+      navigate(destination, { replace: true });
+    }
+  }, [user, token, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +71,7 @@ export const LoginPage: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoFocus
             />
           </div>
 

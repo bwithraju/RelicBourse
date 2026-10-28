@@ -8,7 +8,7 @@ import { useWs } from '../context/WsContext';
 import { formatMoney } from '../utils/format';
 
 export const Navbar: React.FC = () => {
-  const { user, portfolio, logout, switchDemoUser } = useAuth();
+  const { user, portfolio, logout } = useAuth();
   const { status, reconnect } = useWs();
 
   // Balance calculation (Available cash = balance - reserved)
@@ -81,19 +81,9 @@ export const Navbar: React.FC = () => {
               )}
             </div>
 
-            {/* User Info & Persona Switcher */}
+            {/* User Info */}
             <div className="user-dropdown">
               <span className="user-email" title={user.email}>{user.email}</span>
-              <div className="demo-switcher">
-                <button
-                  type="button"
-                  className="btn-persona"
-                  onClick={() => switchDemoUser(user.email.includes('buyer') ? 'seller' : 'buyer')}
-                  title="Switch between Demo Buyer and Demo Seller personas for multi-window testing"
-                >
-                  Switch Persona
-                </button>
-              </div>
             </div>
 
             {/* Logout Button */}

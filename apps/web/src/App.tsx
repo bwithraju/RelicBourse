@@ -24,11 +24,39 @@ export const App: React.FC = () => {
             <Navbar />
             <main className="app-main-content">
               <Routes>
-                {/* Public / Core trading routes */}
-                <Route path="/" element={<MarketsPage />} />
-                <Route path="/market/:id" element={<MarketDetailPage />} />
-                <Route path="/auctions" element={<AuctionsPage />} />
-                <Route path="/auctions/:id" element={<AuctionDetailPage />} />
+                {/* Core trading routes — protected so visitors load login screen first */}
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <MarketsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/market/:id"
+                  element={
+                    <ProtectedRoute>
+                      <MarketDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/auctions"
+                  element={
+                    <ProtectedRoute>
+                      <AuctionsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/auctions/:id"
+                  element={
+                    <ProtectedRoute>
+                      <AuctionDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Auth routes */}
                 <Route path="/login" element={<LoginPage />} />
