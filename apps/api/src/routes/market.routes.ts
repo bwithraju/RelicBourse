@@ -9,7 +9,23 @@ export const marketRouter = Router();
 marketRouter.get('/', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const markets = await marketsRepo.listMarkets();
-    res.status(200).json(markets);
+    const bookManager = BookManager.getInstance();
+    const enriched = markets.map((m: any) => {
+      try {
+        const book = bookManager.getBook(m.id);
+        const snapshot = book.getSnapshot(1);
+        const bestBid = snapshot.bids && snapshot.bids.length > 0 ? snapshot.bids[0].price : null;
+        const bestAsk = snapshot.asks && snapshot.asks.length > 0 ? snapshot.asks[0].price : null;
+        return {
+          ...m,
+          bestBid,
+          bestAsk,
+        };
+      } catch {
+        return m;
+      }
+    });
+    res.status(200).json(enriched);
   } catch (err) {
     next(err);
   }

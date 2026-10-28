@@ -46,7 +46,9 @@ export const MarketDetailPage: React.FC = () => {
     setMarketError(null);
     try {
       const allMarkets = await apiClient.getMarkets();
-      const current = allMarkets.find((m) => m.id === marketId);
+      const current = allMarkets.find(
+        (m) => m.id.toLowerCase() === marketId.toLowerCase()
+      );
       if (current) {
         setMarket(current);
       } else {

@@ -123,8 +123,10 @@ export function useOrderBook(marketId: string): UseOrderBookResult {
       // 1. Snapshot event: replace book completely
       if (event.type === 'snapshot') {
         if (!event.marketId || event.marketId === marketId) {
-          const sortedBids = [...(event.data.bids || [])].sort((a, b) => b.price - a.price);
-          const sortedAsks = [...(event.data.asks || [])].sort((a, b) => a.price - b.price);
+          const rawBids = event.data?.bids || (event as any).bids || [];
+          const rawAsks = event.data?.asks || (event as any).asks || [];
+          const sortedBids = [...rawBids].sort((a, b) => b.price - a.price);
+          const sortedAsks = [...rawAsks].sort((a, b) => a.price - b.price);
           setBook({ bids: sortedBids, asks: sortedAsks });
         }
       }
@@ -133,9 +135,9 @@ export function useOrderBook(marketId: string): UseOrderBookResult {
       else if (event.type === 'depth_delta') {
         if (!event.marketId || event.marketId === marketId) {
           // If the payload is already a full snapshot { bids, asks }
-          if ('bids' in event.data && 'asks' in event.data) {
-            const sortedBids = [...event.data.bids].sort((a, b) => b.price - a.price);
-            const sortedAsks = [...event.data.asks].sort((a, b) => a.price - b.price);
+          if (event.data && typeof event.data === 'object' && 'bids' in event.data && 'asks' in event.data) {
+            const sortedBids = [...(event.data.bids || [])].sort((a, b) => b.price - a.price);
+            const sortedAsks = [...(event.data.asks || [])].sort((a, b) => a.price - b.price);
             setBook({ bids: sortedBids, asks: sortedAsks });
           } else if (Array.isArray(event.data)) {
             // Delta list of level updates: [{side, price, qty, orders}]

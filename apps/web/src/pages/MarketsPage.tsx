@@ -2,13 +2,14 @@
 // Displays active secondary markets, face values, anti-scalping caps, and best bid/ask spreads
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Market } from '../types';
 import { apiClient, getErrorMessage } from '../api/client';
 import { formatMoney } from '../utils/format';
 import { EmptyState, ErrorBanner } from '../components/EmptyState';
 
 export const MarketsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +64,12 @@ export const MarketsPage: React.FC = () => {
               mkt.bestBid && mkt.bestAsk ? mkt.bestAsk - mkt.bestBid : null;
 
             return (
-              <div key={mkt.id} className="market-card">
+              <div
+                key={mkt.id}
+                className="market-card"
+                onClick={() => navigate(`/market/${mkt.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="market-card-header">
                   <div className="market-status-row">
                     <span className="badge-market-active">● {mkt.status}</span>
@@ -108,9 +114,16 @@ export const MarketsPage: React.FC = () => {
                       <span className="text-muted">Spread: Open</span>
                     )}
                   </div>
-                  <Link to={`/market/${mkt.id}`} className="btn-trade-market">
+                  <button
+                    type="button"
+                    className="btn-trade-market"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/market/${mkt.id}`);
+                    }}
+                  >
                     Open Order Book →
-                  </Link>
+                  </button>
                 </div>
               </div>
             );

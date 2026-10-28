@@ -270,4 +270,60 @@ export async function autoMigrate(): Promise<void> {
       }
     }
   }
+
+  // Seed market maker liquidity orders if no open orders exist (so Level-2 book & depth charts are actively populated)
+  const mmEmail = 'liquidity@relicbourse.com';
+  let mmRes = await runner.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1);', [mmEmail]);
+  let mmId: string;
+  if (mmRes.rows.length === 0) {
+    const mmHash = await bcrypt.hash('MarketMakerPass2026!', 8);
+    const u = await runner.query('INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id;', [mmEmail, mmHash]);
+    mmId = u.rows[0].id;
+    await runner.query('INSERT INTO accounts (user_id, balance_minor, reserved_minor) VALUES ($1, 100000000, 0);', [mmId]);
+    for (const m of DEMO_MARKETS) {
+      await runner.query('INSERT INTO inventory (user_id, market_id, quantity, reserved_qty) VALUES ($1, $2, 100, 0);', [mmId, m.id]);
+    }
+  } else {
+    mmId = mmRes.rows[0].id;
+  }
+
+  const existingOrders = await runner.query("SELECT COUNT(*) AS count FROM orders WHERE status IN ('OPEN', 'PARTIAL');");
+  if (parseInt(existingOrders.rows[0].count, 10) === 0) {
+    const LIQUIDITY_ORDERS = [
+      // Culrav 2026 (FV: ₹2,000, Cap: ₹2,400)
+      { marketId: 'market-culrav-2026', side: 'BUY', priceMinor: 210000, qty: 5 },
+      { marketId: 'market-culrav-2026', side: 'BUY', priceMinor: 200000, qty: 10 },
+      { marketId: 'market-culrav-2026', side: 'SELL', priceMinor: 225000, qty: 6 },
+      { marketId: 'market-culrav-2026', side: 'SELL', priceMinor: 235000, qty: 8 },
+
+      // Renesiance 2026 (FV: ₹1,500, Cap: ₹1,800)
+      { marketId: 'market-renesiance-2026', side: 'BUY', priceMinor: 155000, qty: 4 },
+      { marketId: 'market-renesiance-2026', side: 'BUY', priceMinor: 150000, qty: 8 },
+      { marketId: 'market-renesiance-2026', side: 'SELL', priceMinor: 165000, qty: 5 },
+      { marketId: 'market-renesiance-2026', side: 'SELL', priceMinor: 175000, qty: 7 },
+
+      // Avishkar 2026 (FV: ₹2,500, Cap: ₹3,000)
+      { marketId: 'market-avishkar-2026', side: 'BUY', priceMinor: 260000, qty: 6 },
+      { marketId: 'market-avishkar-2026', side: 'BUY', priceMinor: 250000, qty: 12 },
+      { marketId: 'market-avishkar-2026', side: 'SELL', priceMinor: 280000, qty: 5 },
+      { marketId: 'market-avishkar-2026', side: 'SELL', priceMinor: 295000, qty: 9 },
+
+      // Rangtaadi 2026 (FV: ₹1,000, Cap: ₹1,200)
+      { marketId: 'market-rangtaadi-2026', side: 'BUY', priceMinor: 105000, qty: 8 },
+      { marketId: 'market-rangtaadi-2026', side: 'BUY', priceMinor: 100000, qty: 15 },
+      { marketId: 'market-rangtaadi-2026', side: 'SELL', priceMinor: 115000, qty: 7 },
+      { marketId: 'market-rangtaadi-2026', side: 'SELL', priceMinor: 120000, qty: 10 },
+    ];
+
+    for (const o of LIQUIDITY_ORDERS) {
+      await runner.query(
+        `INSERT INTO orders (user_id, market_id, side, type, price_minor, qty, filled_qty, status, idempotency_key)
+         VALUES ($1, $2, $3, 'LIMIT', $4, $5, 0, 'OPEN', $6);`,
+        [mmId, o.marketId, o.side, o.priceMinor.toString(), o.qty, `seed-${o.marketId}-${o.side}-${o.priceMinor}`]
+      );
+    }
+    if (!process.env.VITEST) {
+      console.log('[DB] Seeded resting market liquidity orders for active Level-2 books.');
+    }
+  }
 }

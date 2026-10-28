@@ -13,6 +13,17 @@ interface OrderFormProps {
   onOrderSuccess: (order: Order) => void;
 }
 
+function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export const OrderForm: React.FC<OrderFormProps> = ({
   market,
   selectedPriceMinor,
@@ -30,7 +41,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
   // Persistent idempotency key per logical order:
   // Reused across retries / double-clicks, renewed on input change or success
-  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  const idempotencyKeyRef = useRef<string>(generateUuid());
 
   // Max collar price
   const maxCollarPriceMinor = useMemo(() => {
@@ -42,7 +53,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     if (selectedPriceMinor && selectedPriceMinor > 0) {
       setPriceInput(formatMinorAmount(selectedPriceMinor));
       // Regenerate idempotency key since input changed
-      idempotencyKeyRef.current = crypto.randomUUID();
+      idempotencyKeyRef.current = generateUuid();
       setErrorMessage(null);
       setSuccessMessage(null);
     }
@@ -93,25 +104,25 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
   const handlePriceChange = (val: string) => {
     setPriceInput(val);
-    idempotencyKeyRef.current = crypto.randomUUID();
+    idempotencyKeyRef.current = generateUuid();
     setErrorMessage(null);
   };
 
   const handleQtyChange = (val: string) => {
     setQtyInput(val);
-    idempotencyKeyRef.current = crypto.randomUUID();
+    idempotencyKeyRef.current = generateUuid();
     setErrorMessage(null);
   };
 
   const handleSideToggle = (newSide: OrderSide) => {
     setSide(newSide);
-    idempotencyKeyRef.current = crypto.randomUUID();
+    idempotencyKeyRef.current = generateUuid();
     setErrorMessage(null);
   };
 
   const handleTypeToggle = (newType: OrderType) => {
     setType(newType);
-    idempotencyKeyRef.current = crypto.randomUUID();
+    idempotencyKeyRef.current = generateUuid();
     setErrorMessage(null);
   };
 
@@ -166,7 +177,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
       );
 
       // Regenerate idempotency key for the next order
-      idempotencyKeyRef.current = crypto.randomUUID();
+      idempotencyKeyRef.current = generateUuid();
 
       // Refresh parent state & portfolio
       await refreshPortfolio();

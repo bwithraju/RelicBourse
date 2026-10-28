@@ -20,31 +20,34 @@ export const L2Ladder: React.FC<L2LadderProps> = ({
   faceValueMinor,
   capPercent = 120,
 }) => {
+  const safeBids = useMemo(() => (Array.isArray(bids) ? bids : []), [bids]);
+  const safeAsks = useMemo(() => (Array.isArray(asks) ? asks : []), [asks]);
+
   // Compute max qty for visual depth bars
   const maxQty = useMemo(() => {
     let max = 1;
-    bids.forEach((b) => {
+    safeBids.forEach((b) => {
       if (b.qty > max) max = b.qty;
     });
-    asks.forEach((a) => {
+    safeAsks.forEach((a) => {
       if (a.qty > max) max = a.qty;
     });
     return max;
-  }, [bids, asks]);
+  }, [safeBids, safeAsks]);
 
   // Asks are sorted ascending (lowest ask is asks[0]).
   // In trading ladders, we show top asks down to best ask (just above spread)
   const displayAsks = useMemo(() => {
-    const slice = asks.slice(0, 15);
+    const slice = safeAsks.slice(0, 15);
     return [...slice].reverse(); // reverse so lowest ask sits at bottom next to spread
-  }, [asks]);
+  }, [safeAsks]);
 
   const displayBids = useMemo(() => {
-    return bids.slice(0, 15); // highest bid at top next to spread
-  }, [bids]);
+    return safeBids.slice(0, 15); // highest bid at top next to spread
+  }, [safeBids]);
 
-  const bestBid = bids[0]?.price ?? null;
-  const bestAsk = asks[0]?.price ?? null;
+  const bestBid = safeBids[0]?.price ?? null;
+  const bestAsk = safeAsks[0]?.price ?? null;
   const spreadMinor = bestBid !== null && bestAsk !== null ? bestAsk - bestBid : null;
   const spreadPercent = bestBid && spreadMinor !== null ? ((spreadMinor / bestBid) * 100).toFixed(2) : null;
 
