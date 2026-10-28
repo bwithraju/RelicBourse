@@ -14,6 +14,8 @@
     "build": "npm --workspace=packages/shared run build && npm --workspace=packages/matching run build && npm --workspace=apps/api run build && npm --workspace=apps/web run build",
     "build:api": "npm --workspace=packages/shared run build && npm --workspace=packages/matching run build && npm --workspace=apps/api run build",
     "build:web": "npm --workspace=apps/web run build",
+    "db:migrate": "npm --workspace=apps/api run db:migrate",
+    "db:seed": "npm --workspace=apps/api run db:seed",
     "test": "vitest run",
     "test:api": "npm --workspace=apps/api run test",
     "test:web": "npm --workspace=apps/web run test"
