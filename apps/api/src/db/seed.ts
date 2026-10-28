@@ -7,23 +7,30 @@ const __filename = fileURLToPath(import.meta.url);
 
 export const DEMO_MARKETS: Market[] = [
   {
-    id: 'market-festival-pass',
-    name: 'Festival VIP Pass 2026',
+    id: 'market-culrav-2026',
+    name: 'Culrav 2026',
     faceValueMinor: 200000,
     capPercent: 120,
     status: 'ACTIVE',
   },
   {
-    id: 'market-limited-merch',
-    name: 'Cyberpunk Limited Hoodie',
-    faceValueMinor: 500000,
+    id: 'market-renesiance-2026',
+    name: 'Renesiance 2026',
+    faceValueMinor: 150000,
     capPercent: 120,
     status: 'ACTIVE',
   },
   {
-    id: 'market-concert-pass',
-    name: 'Darkhold Midnight Concert Pass',
-    faceValueMinor: 150000,
+    id: 'market-avishkar-2026',
+    name: 'Avishkar 2026',
+    faceValueMinor: 250000,
+    capPercent: 120,
+    status: 'ACTIVE',
+  },
+  {
+    id: 'market-rangtaadi-2026',
+    name: 'Rangtaadi 2026',
+    faceValueMinor: 100000,
     capPercent: 120,
     status: 'ACTIVE',
   },

@@ -13,7 +13,17 @@ import { reconcileDb } from '../src/db/reconcile.js';
 import { seedNewUserData, DEMO_MARKETS } from '../src/db/seed.js';
 import bcrypt from 'bcryptjs';
 
-describe('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
+let isPgAvailable = false;
+try {
+  const client = await pool.connect();
+  await client.query('SELECT 1 AS connected;');
+  client.release();
+  isPgAvailable = true;
+} catch {
+  console.warn('⚠️  PostgreSQL is not reachable on localhost:5432. Skipping live PostgreSQL database tests.');
+}
+
+describe.skipIf(!isPgAvailable)('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
   beforeAll(async () => {
     // Verify connection to PostgreSQL
     const res = await pool.query('SELECT 1 AS connected;');
@@ -21,25 +31,31 @@ describe('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    if (isPgAvailable) {
+      await pool.end();
+    }
   });
 
-  it('1. PostgreSQL holds the 3 demo markets with proper face values and 120% cap', async () => {
+  it('1. PostgreSQL holds the 4 demo markets with proper face values and 120% cap', async () => {
     const markets = await pgMarketsRepo.listMarkets();
-    expect(markets.length).toBeGreaterThanOrEqual(3);
+    expect(markets.length).toBeGreaterThanOrEqual(4);
 
-    const fest = await pgMarketsRepo.getMarket({}, 'market-festival-pass');
-    expect(fest).not.toBeNull();
-    expect(fest.faceValueMinor).toBe(200000);
-    expect(fest.capPercent).toBe(120);
+    const culrav = await pgMarketsRepo.getMarket({}, 'market-culrav-2026');
+    expect(culrav).not.toBeNull();
+    expect(culrav.faceValueMinor).toBe(200000);
+    expect(culrav.capPercent).toBe(120);
 
-    const merch = await pgMarketsRepo.getMarket({}, 'market-limited-merch');
-    expect(merch).not.toBeNull();
-    expect(merch.faceValueMinor).toBe(500000);
+    const renesiance = await pgMarketsRepo.getMarket({}, 'market-renesiance-2026');
+    expect(renesiance).not.toBeNull();
+    expect(renesiance.faceValueMinor).toBe(150000);
 
-    const concert = await pgMarketsRepo.getMarket({}, 'market-concert-pass');
-    expect(concert).not.toBeNull();
-    expect(concert.faceValueMinor).toBe(150000);
+    const avishkar = await pgMarketsRepo.getMarket({}, 'market-avishkar-2026');
+    expect(avishkar).not.toBeNull();
+    expect(avishkar.faceValueMinor).toBe(250000);
+
+    const rangtaadi = await pgMarketsRepo.getMarket({}, 'market-rangtaadi-2026');
+    expect(rangtaadi).not.toBeNull();
+    expect(rangtaadi.faceValueMinor).toBe(100000);
   });
 
   it('2. Registers user and seeds ₹1,00,000 + demo inventory in PostgreSQL', async () => {
@@ -63,7 +79,7 @@ describe('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
 
     // Verify inventory rows in PostgreSQL (2 of each demo market)
     const inventory = await pgInventoryRepo.listInventoryByUser({}, user.id);
-    expect(inventory.length).toBe(3);
+    expect(inventory.length).toBe(4);
     for (const inv of inventory) {
       expect(inv.quantity).toBe(2);
       expect(inv.reservedQty).toBe(0);
@@ -111,10 +127,10 @@ describe('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
     expect(acc?.reservedMinor).toBe(500000);
 
     // Reserve 1 festival pass
-    const invOk = await pgInventoryRepo.reserveInventory({}, user.id, 'market-festival-pass', 1);
+    const invOk = await pgInventoryRepo.reserveInventory({}, user.id, 'market-culrav-2026', 1);
     expect(invOk).toBe(true);
 
-    const inv = await pgInventoryRepo.getInventory({}, user.id, 'market-festival-pass');
+    const inv = await pgInventoryRepo.getInventory({}, user.id, 'market-culrav-2026');
     expect(inv?.quantity).toBe(2);
     expect(inv?.reservedQty).toBe(1);
 
@@ -122,7 +138,7 @@ describe('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
     const excessiveFunds = await pgAccountsRepo.reserveFunds({}, user.id, 99999999);
     expect(excessiveFunds).toBe(false);
 
-    const excessiveInv = await pgInventoryRepo.reserveInventory({}, user.id, 'market-festival-pass', 10);
+    const excessiveInv = await pgInventoryRepo.reserveInventory({}, user.id, 'market-culrav-2026', 10);
     expect(excessiveInv).toBe(false);
   });
 
@@ -138,7 +154,7 @@ describe('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
       return { buyer: b, seller: s };
     });
 
-    const marketId = 'market-festival-pass';
+    const marketId = 'market-culrav-2026';
     const tradePrice = 200000; // ₹2,000
     const qty = 1;
 
@@ -231,7 +247,7 @@ describe('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
       passwordHash: 'hash',
     });
 
-    const marketId = 'market-concert-pass';
+    const marketId = 'market-renesiance-2026';
     const startPrice = 300000;
     const floorPrice = 100000;
     const decrement = 10000;

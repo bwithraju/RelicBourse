@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check } from 'k6';
 
 export const BASE_URL = __ENV.API_BASE_URL || 'http://localhost:4000';
-export const DEMO_MARKET_ID = 'market-festival-pass';
+export const DEMO_MARKET_ID = 'market-culrav-2026';
 export const DEMO_FACE_VALUE = 200000;
 export const DEMO_CAP_PERCENT = 120; // max allowed: 240,000 paise
 
