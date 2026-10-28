@@ -116,11 +116,14 @@ function shouldUsePg(client?: DbClient): boolean {
   if (client && typeof (client as any).query === 'function') {
     return true;
   }
-  return process.env.USE_REAL_DB === 'true';
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return false;
+  }
+  return true;
 }
 
 export async function withTransaction<T>(fn: (client: DbClient) => Promise<T>): Promise<T> {
-  if (process.env.USE_REAL_DB === 'true') {
+  if (shouldUsePg()) {
     return await pgWithTransaction(fn as any);
   }
   const dummyClient: DbClient = {};

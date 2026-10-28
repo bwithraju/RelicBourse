@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs=require('fs'),path=require('path'); const src='src/db/migrations', dst='dist/db/migrations'; if(fs.existsSync(src)){fs.mkdirSync(dst,{recursive:true}); for(const f of fs.readdirSync(src)){fs.copyFileSync(path.join(src,f),path.join(dst,f));}}\"",
     "start": "node dist/index.js",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "test": "vitest run"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.13",
     "@relicbourse/matching": "*",
     "@relicbourse/shared": "*",
     "bcryptjs": "^2.4.3",

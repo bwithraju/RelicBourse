@@ -23,5 +23,8 @@
   "devDependencies": {
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.13"
   }
 }

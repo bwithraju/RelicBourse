@@ -1,5 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import fs from 'node:fs';
+import path from 'node:path';
 import { withTransaction, usersRepo, seedNewUserData } from '../db/index.js';
 import { AppError } from '../middleware/error.js';
 
@@ -36,6 +38,22 @@ export class AuthService {
         await seedNewUserData(client, newUser.id);
         return newUser;
       });
+
+      if (!process.env.VITEST) {
+        try {
+          const rootDataDir = path.resolve(process.cwd(), 'data');
+          if (!fs.existsSync(rootDataDir)) fs.mkdirSync(rootDataDir, { recursive: true });
+          const backupFile = path.join(rootDataDir, 'registered_users.json');
+          let existing: Array<{ email: string; passwordHash: string }> = [];
+          if (fs.existsSync(backupFile)) {
+            existing = JSON.parse(fs.readFileSync(backupFile, 'utf-8'));
+          }
+          if (!existing.some((u) => u.email.toLowerCase() === user.email.toLowerCase())) {
+            existing.push({ email: user.email.toLowerCase(), passwordHash });
+            fs.writeFileSync(backupFile, JSON.stringify(existing, null, 2), 'utf-8');
+          }
+        } catch {}
+      }
 
       const token = jwt.sign(
         {

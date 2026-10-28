@@ -17,6 +17,9 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
+  if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
+    console.error('[API Error]', err);
+  }
   const statusCode = 'statusCode' in err && typeof err.statusCode === 'number' ? err.statusCode : 500;
   const message = statusCode === 500 ? 'Internal server error' : err.message;
 

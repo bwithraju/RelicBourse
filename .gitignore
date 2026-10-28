@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Database data
+data/pgdata
+data/*.pid
+data/registered_users.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

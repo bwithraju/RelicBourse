@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS accounts (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE RESTRICT,
-    balance_minor BIGINT NOT NULL DEFAULT 0 CHECK (balance_minor >= 0),
+    balance_minor BIGINT NOT NULL DEFAULT 0 CONSTRAINT chk_accounts_balance_minor CHECK (balance_minor >= 0),
     reserved_minor BIGINT NOT NULL DEFAULT 0 CHECK (reserved_minor >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

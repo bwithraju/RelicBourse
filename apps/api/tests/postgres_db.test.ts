@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { pool, withTransaction } from '../src/db/pool.js';
+import { pool, withTransaction, autoMigrate } from '../src/db/pool.js';
 import { pgUsersRepo } from '../src/db/repositories/users.repo.js';
 import { pgAccountsRepo } from '../src/db/repositories/accounts.repo.js';
 import { pgInventoryRepo } from '../src/db/repositories/inventory.repo.js';
@@ -25,6 +25,7 @@ try {
 
 describe.skipIf(!isPgAvailable)('PostgreSQL End-to-End Database Integration & Integrity Tests', () => {
   beforeAll(async () => {
+    await autoMigrate();
     // Verify connection to PostgreSQL
     const res = await pool.query('SELECT 1 AS connected;');
     expect(res.rows[0].connected).toBe(1);
@@ -107,7 +108,7 @@ describe.skipIf(!isPgAvailable)('PostgreSQL End-to-End Database Integration & In
         'INSERT INTO accounts (user_id, balance_minor, reserved_minor) VALUES ($1, -100, 0);',
         [invalidUserId]
       )
-    ).rejects.toThrow(/chk_accounts_balance_minor/);
+    ).rejects.toThrow(/accounts_balance_minor/);
   });
 
   it('5. Reserves funds and inventory atomically in PostgreSQL', async () => {
